@@ -1,0 +1,47 @@
+# apiVersion: openfaas.com/v1
+# kind: FunctionIngress
+# metadata:
+#   name: temperature
+#   namespace: openfaas
+# spec:
+#   domain: localhost
+#   function: temperature
+#   ingressType: nginx
+#   path: /temperature/(.*)
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: "rewrite"
+  namespace: "openfaas"
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/rewrite-target: /function/temperature/$1
+spec:
+  rules:
+    - http:
+        paths: 
+          - path: /(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  number: 8080
+
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: redirect
+# spec:
+#   rules:
+#   - host: localhost
+#     http:
+#       paths:
+#       - path: /
+#         pathType: Prefix
+#         backend:
+#           service:
+#             name: gateway
+#             port:
+#               number: 8080

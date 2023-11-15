@@ -1,0 +1,95 @@
+# persistent_volumes/pvc.yml
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: postgres-pv-volume  # Sets PV's name
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 3Gi # Sets PV Volume
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/data/db"
+
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: postgres-pv-claim  # Sets name of PVC
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce  # Sets read and write access
+  resources:
+    requests:
+      storage: 2Gi  # Sets volume sizeapiVersion: v1
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: postgres-config
+  labels:
+    app: postgres
+data:
+  POSTGRES_DB: postgresdb
+  POSTGRES_USER: admin
+  POSTGRES_PASSWORD: psltest
+  db-init: |
+    CREATE SCHEMA experiment;
+    DROP TABLE IF EXISTS experiment;
+    DROP TABLE IF EXISTS researcher;
+    CREATE TABLE experiment(experiment_id TEXT, sensor_id TEXT, measurement_id TEXT, timestamp_value FLOAT, temperature FLOAT, measurement_hash TEXT);
+    CREATE TABLE researcher(experiment_id TEXT, researcher_email TEXT, sensor_id TEXT, upper_threshold FLOAT, lower_threshold FLOAT );
+
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: postgre-database
+  labels: 
+    app: postgre-db
+spec:
+  containers:
+    - name: postgres
+      image: postgres:10.1 # Sets Image
+      imagePullPolicy: "IfNotPresent"
+      lifecycle: 
+        postStart: 
+          exec: 
+            command: ["/bin/bash", "-c", "sleep 10; psql -U $POSTGRES_USER -d $POSTGRES_DB -a -f /home/db-init.sql"]
+      ports:
+        - containerPort: 5432  # Exposes container port
+      envFrom:
+        - configMapRef:
+            name: postgres-config ##
+      volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: postgredb
+        - name: config-vol
+          mountPath: /home
+  volumes:
+    - name: postgredb
+      persistentVolumeClaim:
+        claimName: postgres-pv-claim
+    - name: config-vol
+      configMap:
+        name: postgres-config
+        items:
+          - key: db-init
+            path: db-init.sql
+  restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata: 
+  name: postgre-svc
+spec:
+  type: ClusterIP
+  selector:
+    app: postgre-db
+  ports:
+    - port: 5432
+      targetPort: 5432

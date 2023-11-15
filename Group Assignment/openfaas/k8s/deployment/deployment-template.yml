@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: experiment-consumer-deployment
+  labels:
+    app: experiment-consumer
+spec:
+  replicas: 16 # contains max 8 pods instances
+  selector:
+    matchLabels:
+      app: experiment-consumer
+  template:
+    metadata:
+      labels:
+        app: experiment-consumer
+    spec:
+      containers: #structure of pod
+        - name: experiment-consumer
+          #image: dclandau/assignment-consumer:1.0.0 # need change to local image
+          image: group10-consumer-image # changed by J
+          imagePullPolicy: Never # use image built by local dockerfile, changed by J
+          #ports: #test J
+          #  - containerPort: 8081 # define container port 8081,test J
+          #args: ["consumer.py", "group10", "random-test"]
+          args: ["consumer.py", "experiment","random3"]
+          volumeMounts:
+            - name: config-vol
+              mountPath: /usr/src/app/auth
+      volumes:
+        - name: config-vol
+          configMap:
+            name: kafka-auth
+            items:
+              - key: kafka.truststore.pkcs12
+                path: kafka.truststore.pkcs12
+              - key: kafka.keystore.pkcs12
+                path: kafka.keystore.pkcs12
+              - key: ca.crt
+                path: ca.crt

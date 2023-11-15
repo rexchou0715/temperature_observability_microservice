@@ -1,0 +1,5 @@
+Host CloudCourse_VM_Group_10
+  HostName 3.248.214.252
+  User ubuntu
+  Port 22
+  IdentityFile ~/.ssh/ssh_key_10
